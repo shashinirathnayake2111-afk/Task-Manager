@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Task Master</h1>
+
+        <div class="quote-container">
+            <div class="quote-text" id="quoteText"></div>
+            <div class="quote-author" id="quoteAuthor"></div>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="todo-input" placeholder="Add a new task...">
+            <button id="add-button">Add</button>
+        </div>
+        <ul id="todoList"></ul>
+    </div>
+
+    <script>
+
+        const quotes = [
+            { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+            { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+            { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+            { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" },
+            { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+            { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+            { text: "Action is the foundational key to all success.", author: "Pablo Picasso" },
+            { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+            { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+            { text: "Your limitation—it's only your imagination.", author: "Anonymous" }
+        ];
+
+        let currentQuoteIndex = 0;
+
+        // Display quote
+        function displayQuote() {
+            const quoteText = document.getElementById('quoteText');
+            const quoteAuthor = document.getElementById('quoteAuthor');
+            
+            // Reset animation
+            quoteText.style.animation = 'none';
+            quoteAuthor.style.animation = 'none';
+            
+            setTimeout(() => {
+                quoteText.textContent = `"${quotes[currentQuoteIndex].text}"`;
+                quoteAuthor.textContent = `— ${quotes[currentQuoteIndex].author}`;
+                
+                quoteText.style.animation = 'fadeIn 1s ease-in forwards';
+                quoteAuthor.style.animation = 'fadeIn 1s ease-in 0.3s forwards';
+            }, 50);
+            
+            currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+        }
+
+        // Change quote every 8 seconds
+        displayQuote();
+        setInterval(displayQuote, 8000);
+
+        let todoList = [];
+
+        const todoInput = document.getElementById('todo-input');
+        const addButton = document.getElementById('add-button');
+        const todoListElement = document.getElementById('todoList');
+        const TODO_LIST_KEY = 'todoList';
+
+        // Load tasks from localStorage
+        function loadTasks() {
+            const storedTasks = localStorage.getItem(TODO_LIST_KEY);
+            if (storedTasks) {
+                todoList = JSON.parse(storedTasks);
+                renderTasks();
+            }
+        }
+
+        // Save tasks to localStorage
+        function saveTasks() {
+            localStorage.setItem(TODO_LIST_KEY, JSON.stringify(todoList));
+        }  
+
+        // Render tasks to the DOM (KEEP ONLY THIS ONE)
+        function renderTasks() {
+            todoListElement.innerHTML = '';
+
+            todoList.forEach((task, index) => {
+                const li = document.createElement('li');
+                if (task.completed) {
+                    li.classList.add('completed');
+                }
+
+                const taskContent = document.createElement('div');
+                taskContent.className = 'task-content';
+
+                // Custom checkbox div
+                const checkbox = document.createElement('div');
+                checkbox.className = task.completed ? 'custom-checkbox checked' : 'custom-checkbox';
+                checkbox.onclick = () => toggleTask(index);
+            
+                const taskText = document.createElement('span');
+                taskText.textContent = task.text || task;
+                taskText.className = 'task-text';
+
+                // Edit input (hidden by default)
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.className = 'edit-input';
+                editInput.value = task.text || task;
+                
+                // Button group
+                const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'button-group';
+
+                // Edit button
+                const editButton = document.createElement('button');
+                editButton.innerHTML = '<i class="fas fa-pen"></i>';
+                editButton.className = 'edit-btn';
+                editButton.onclick = () => startEdit(index);
+            
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteButton.className = 'delete-btn';
+                deleteButton.onclick = () => deleteTask(index);
+
+                li.appendChild(checkbox);
+                li.appendChild(taskText);
+                li.appendChild(deleteButton);
+                todoListElement.appendChild(li);
+
+                taskContent.appendChild(checkbox);
+                taskContent.appendChild(taskText);
+                taskContent.appendChild(editInput);
+                
+                buttonGroup.appendChild(editButton);
+                buttonGroup.appendChild(deleteButton);
+
+                li.appendChild(taskContent);
+                li.appendChild(buttonGroup);
+                todoListElement.appendChild(li);
+
+                editInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        saveEdit(index, editInput.value);
+                    }
+                });
+
+                editInput.addEventListener('blur', () => {
+                    saveEdit(index, editInput.value);
+                });
+            });
+        }
+
+        // Add a new task
+        function addTask() {
+            const task = todoInput.value.trim();
+            if (task) {
+                todoList.push({ text: task, completed: false });
+                todoInput.value = '';
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // Toggle task completion
+        function toggleTask(index) {
+            todoList[index].completed = !todoList[index].completed;
+            saveTasks();
+            renderTasks();
+        }
+
+        // Delete a task
+        function deleteTask(index) {
+            todoList.splice(index, 1);
+            saveTasks();
+            renderTasks();
+        }
+
+        // Start editing a task
+        function startEdit(index) {
+            const li = todoListElement.children[index];
+            const taskText = li.querySelector('.task-text');
+            const editInput = li.querySelector('.edit-input');
+            
+            taskText.classList.add('editing');
+            editInput.classList.add('active');
+            editInput.focus();
+            editInput.select();
+        }
+
+        // Save edited task
+        function saveEdit(index, newText) {
+            const trimmedText = newText.trim();
+            if (trimmedText) {
+                todoList[index].text = trimmedText;
+                saveTasks();
+            }
+            renderTasks();
+        }
+
+        // Event listeners
+        addButton.addEventListener('click', addTask);
+
+        todoInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        // Load tasks when the page loads
+        window.onload = loadTasks;
+    </script>
+</body>
+</html>
